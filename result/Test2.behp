@@ -1,0 +1,2 @@
+p0 = Sensetive(asn_1) || Sensetive(asn_2) || Sensetive(P1, select),
+p1 = (v_asn_1; v_asn_2; v_asn_3; asn_4; asn_5)

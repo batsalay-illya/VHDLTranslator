@@ -1,0 +1,7 @@
+asn_1 = ((1) ->("Behavioral#behavioral: action 'test_1 <= input_0';") (behavioral.test_1 = input_0)),
+asn_2 = ((1) ->("Behavioral#behavioral: action 'test_2 <= input_1';") (behavioral.test_2 = input_1)),
+v_asn_1 = ((1) ->("P1#p1: action 'Q1 := 10';") (p1.Q1 = 10)),
+v_asn_2 = ((1) ->("P1#p1: action 'Q2 := 15';") (p1.Q2 = 15)),
+v_asn_3 = ((1) ->("P1#p1: action 'Q3 := Q1 + Q2';") (p1.Q3 = p1.Q1+p1.Q2)),
+asn_4 = ((1) ->("P1#p1: action 'output <= input_0';") (output = input_0)),
+asn_5 = ((1) ->("P1#p1: action 'output <= input_1';") (output = input_1))
