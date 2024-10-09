@@ -4,6 +4,7 @@ result/
 
 # Other files
 *.pyproj
+*.sln
 *.jar
 
 # Byte-compiled / optimized / DLL files
