@@ -1,3 +1,11 @@
+# Result and .vs folder
+result/
+.vs/
+
+# Other files
+*.pyproj
+*.jar
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
