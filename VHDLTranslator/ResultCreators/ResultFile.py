@@ -1,9 +1,10 @@
+from io import TextIOWrapper
 import os
 import shutil
 import traceback
 
-class FileCreator:
-    def _create_file(self, result_path : str, result_data : str):
+class ResultFile:
+    def _create_file(self, result_path: str) -> TextIOWrapper:
         try:
             if os.path.exists(result_path):
                 # Construct the new name for the existing file
@@ -13,11 +14,16 @@ class FileCreator:
                 # Rename the existing file
                 shutil.move(result_path, new_name)
 
-            # Create a new file and write data to it
-            with open(result_path, 'w') as file:
-                file.write(result_data)
+            # Create a new file
+            return open(result_path, 'w')
+            
 
         except Exception:
             print(traceback.format_exc())
             #print(traceback.exc_info()[2])
+
+    def _is_nil(self, result: str) -> str:
+        if result == "":
+            return "Nil"
+        else: return result
         

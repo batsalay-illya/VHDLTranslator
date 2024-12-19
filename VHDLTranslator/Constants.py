@@ -1,8 +1,11 @@
+from VHDL.VHDLStatements import ProcessStatement, SignalAssignment, VariableAssignment
+
+
 vhdl_types = {
-    "bit" : "boolean",
-    "bit_vector" : "boolean[]",
-    "std_logic" : "boolean",
-    "std_logic_vector" : "boolean[]",
+    "bit" : "bool",
+    "bit_vector" : "(int)->bool",
+    "std_logic" : "bool",
+    "std_logic_vector" : "(int)->bool",
 
     "integer" : "int",
     "natural" : "int",
@@ -12,7 +15,13 @@ vhdl_types = {
     "array" : "Array[]",
     "record" : "NON-DIFINED",
 
-    "boolean" : "boolean",
+    "boolean" : "bool",
     "character" : "char",
     "string" : "String"
 }
+
+MODULE = "module"
+
+CONCURRENT_STATEMENTS = [ProcessStatement]
+
+SIMPLE_ASSIGN_STATEMENTS = (SignalAssignment, VariableAssignment)

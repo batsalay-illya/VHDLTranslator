@@ -1,11 +1,16 @@
+from __future__ import annotations
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 
 @dataclass
 class VHDLDeclaration():
-    name       : str
-    agent_name : str
+    name            : str
+    agent_name      : str
+
+    @staticmethod
+    def from_tuple(declaration_class: VHDLDeclaration, info: Tuple[str, str, str, str]):
+        return VHDLDeclaration(declaration_class, *info)
 
 @dataclass
 class Port(VHDLDeclaration):
@@ -31,7 +36,6 @@ class SubprogramBody(VHDLDeclaration):
 
 @dataclass
 class TypeDeclaration(VHDLDeclaration):
-    identifier      : str
     type_definition : str
 
 @dataclass
@@ -142,6 +146,12 @@ class QuantityDeclaration(VHDLDeclaration):
     source_quantity_declaration : None
 
 @dataclass
-class TerminalDeclaration (VHDLDeclaration):
+class TerminalDeclaration(VHDLDeclaration):
     identifier_list         : List[str]
     subnature_indication    : None
+
+@dataclass
+class ElementDeclaration(VHDLDeclaration):
+    identifier_list : List[str]
+    subtype         : str
+    subtype_js      : str

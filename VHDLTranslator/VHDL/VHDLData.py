@@ -1,9 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from typing import List
+from typing import List, Dict
 
-from VHDL.VHDLStatements import VHDLStatement
+from VHDL.VHDLStatements import *
 from VHDL.VHDLDeclaration import *
 
 
@@ -32,16 +32,9 @@ class TypeDefinition():
     pass
 
 @dataclass
-class ScalarTypeDefinition():
-    pass
-
-@dataclass
-class CompositeTypeDefinition():
-    pass
-
-@dataclass
 class AccessTypeDefinition():
-    pass
+    subtype     : str
+    subtype_js  : str
 
 @dataclass
 class FileTypeDefinition():
@@ -63,32 +56,35 @@ class ConstrainedArrayDefinition():
 @dataclass
 class RecordTypeDefinition():
     pass
-#endregion
 
+@dataclass
+class EnumerationTypeDefinition():
+    enumeration_literals : List[str]
+    
+#endregion
 #endregion
 
 @dataclass
-class MainData:
-    name : str
+class VHDLDesign:
+    # primary_unity
+    entity              : Entity    = None
+    configuration       : None      = None
+    package_declaration : None      = None
 
-#region Entity  
-@dataclass
-class Entity(MainData):
-    generic : List[Generic]
-    port    : List[Port]
-#endregion
-
-#region Architecture
-@dataclass    
-class Architecture(MainData):
-    declarations : List[VHDLDeclaration]
-    statements   : List[VHDLStatement]
-#endregion    
+    # secondary_unit
+    architecture        : Architecture  = None
+    package_body        : None          = None
 
 @dataclass
 class VHDLData:
-    entity           : Entity
-    architecture     : Architecture
-    
+    design_list : List[VHDLDesign]
+
+    sorted_declaration_list : Dict[str, List[VHDLDeclaration]]
     declaration_list : List[VHDLDeclaration]
-    
+    agent_list : List[VHDLStatement]
+
+    def sorted_declaration_list_append(self, key: str, declaration: List[VHDLDeclaration]):
+        if key in self.sorted_declaration_list:
+            self.sorted_declaration_list[key].extend(declaration)
+        else:
+            self.sorted_declaration_list[key] = declaration

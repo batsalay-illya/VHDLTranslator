@@ -6,6 +6,7 @@ result/
 *.pyproj
 *.sln
 *.jar
+*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

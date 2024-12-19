@@ -1,13 +1,53 @@
 from __future__ import annotations
-from typing import List
+from typing import List, Tuple
 from dataclasses import dataclass
 
 from VHDL.VHDLDeclaration import VHDLDeclaration
 
 @dataclass
 class VHDLStatement:
-    statement_name : str
-    agent_name : str
+    statement_class     : VHDLStatement # Variable for class reference
+    parent              : VHDLStatement
+
+    statement_name      : str
+
+    behaviour_name      : str
+    full_behaviour_name : str
+
+    agent_name          : str
+
+    @staticmethod
+    def from_tuple(statement_class: VHDLStatement, parent: VHDLStatement, info: Tuple[str, str, str, str]):
+        return VHDLStatement(statement_class, parent, *info)
+
+    def get_root_statement(self) -> VHDLStatement:
+        if self.parent.statement_class in (ProcessStatement, BlockStatement):
+            return self.parent
+        
+        return self.parent.get_root_statement()
+
+
+@dataclass
+class Entity(VHDLStatement):
+    generic : List[VHDLDeclaration.Generic]
+    port    : List[VHDLDeclaration.Port]
+
+    def __init__(self, statement_info: VHDLStatement, generic: List[VHDLDeclaration.Generic], port: List[VHDLDeclaration.Port]):
+        super().__init__(**vars(statement_info))
+
+        self.generic = generic
+        self.port    = port
+
+@dataclass    
+class Architecture(VHDLStatement):
+    declarations : List[VHDLDeclaration]
+    statements   : List[VHDLStatement]
+
+    def __init__(self, statement_info: VHDLStatement, declarations: List[VHDLDeclaration], statements: List[VHDLStatement]):
+        super().__init__(**vars(statement_info))
+
+        self.declarations = declarations
+        self.statements   = statements
 
 @dataclass
 class BlockStatement(VHDLStatement):
@@ -17,12 +57,35 @@ class BlockStatement(VHDLStatement):
     declarations            : List[VHDLDeclaration]
     statements              : List[VHDLStatement]
 
+    def __init__(self, statement_info: VHDLStatement, expression: str, expression_with_agents: str,
+                block_header: None, declarations: List[VHDLDeclaration], statements: List[VHDLStatement]):
+
+        super().__init__(**vars(statement_info))
+
+        self.expression               = expression
+        self.expression_with_agents   = expression_with_agents
+        self.block_header             = block_header
+        self.declarations             = declarations
+        self.statements               = statements
+
+
 @dataclass
 class ProcessStatement(VHDLStatement):
     sensitivity_list                : List[str]
     sensitivity_list_with_agents    : List[str]
     declarations                    : List[VHDLDeclaration]
     statements                      : List[VHDLStatement]
+
+    def __init__(self, statement_info: VHDLStatement, sensitivity_list: List[str], 
+                sensitivity_list_with_agents: List[str], 
+                declarations: List[VHDLDeclaration], statements: List[VHDLStatement]):
+
+        super().__init__(**vars(statement_info))
+
+        self.sensitivity_list                = sensitivity_list
+        self.sensitivity_list_with_agents    = sensitivity_list_with_agents
+        self.declarations                    = declarations
+        self.statements                      = statements
    
 @dataclass
 class ConcurrentProcedureCallStatement(VHDLStatement):
@@ -30,10 +93,6 @@ class ConcurrentProcedureCallStatement(VHDLStatement):
 
 @dataclass
 class ConcurrentAssertionStatement(VHDLStatement):
-    ...
-
-@dataclass
-class ConcurrentSignalAssignmentStatement(VHDLStatement):
     ...
 
 @dataclass
@@ -58,6 +117,20 @@ class SimpleSimultaneousStatement(SimultaneousStatement):
     expression_with_agents  : str
     tolerance_aspect        : None
 
+    def __init__(self, statement_info: VHDLStatement, expression: str, expression_with_agents: str, tolerance_aspect: None):
+        super().__init__(
+            parent=statement_info.parent,
+            statement_name=statement_info.statement_name,
+            behaviour_name=statement_info.behaviour_name,
+            full_behaviour_name=statement_info.full_behaviour_name,
+            agent_name=statement_info.agent_name,
+        )
+
+        self.expression              = expression
+        self.expression_with_agents  = expression_with_agents
+        self.tolerance_aspect        = tolerance_aspect        
+
+
 @dataclass
 class SimultaneousIfStatement(SimultaneousStatement):
     condition                       : str
@@ -68,10 +141,29 @@ class SimultaneousIfStatement(SimultaneousStatement):
     elsif_statements                : List[SimultaneousStatement]
     else_statements                 : List[SimultaneousStatement]
 
+    def __init__(self, statement_info: VHDLStatement, condition: str, condition_with_agents: str, statements: List[SimultaneousStatement], elsif_condition: str, 
+    elsif_condition_with_agents: str, elsif_statements: List[SimultaneousStatement], else_statements: List[SimultaneousStatement]):
+
+        super().__init__(**vars(statement_info))
+
+        self.condition                       = condition
+        self.condition_with_agents           = condition_with_agents
+        self.statements                      = statements
+        self.elsif_condition                 = elsif_condition
+        self.elsif_condition_with_agents     = elsif_condition_with_agents
+        self.elsif_statements                = elsif_statements
+        self.else_statements                 = else_statements
+
 @dataclass
 class SimultaneousCaseStatement(SimultaneousStatement):
     expression              : str
     expression_with_agents  : str
+
+    def __init__(self, statement_info: VHDLStatement, expression: str, expression_with_agents: str):
+        super().__init__(**vars(statement_info))
+
+        self.expression              = expression              
+        self.expression_with_agents  = expression_with_agents  
 
 @dataclass
 class SimultaneousAlternative():
@@ -85,16 +177,45 @@ class WaitStatement(VHDLStatement):
     condition_with_agents           : str
     timeout                         : None
 
+    
+
+    def __init__(self, statement_info: VHDLStatement, sensitivity_list: str, sensitivity_list_with_agents: str, 
+                 condition: str, condition_with_agents: str, timeout: None):
+
+        super().__init__(**vars(statement_info))
+
+        self.sensitivity_list               = sensitivity_list
+        self.sensitivity_list_with_agents   = sensitivity_list_with_agents
+        self.condition                      = condition
+        self.condition_with_agents          = condition_with_agents
+        self.timeout                        = timeout
+
 @dataclass
 class AssertionStatement(VHDLStatement):
     assertion : None
+
+    def __init__(self, statement_info: VHDLStatement, assertion: None):
+        super().__init__(**vars(statement_info))
+
+        self.assertion = assertion
 
 @dataclass
 class ReportStatement(VHDLStatement):
     report_expression               : str
     report_expression_with_agents   : str
     severity_expression             : str
-    severity_expression_with_agents : str
+    severity_expression_with_agents : str    
+
+    def __init__(self, statement_info: VHDLStatement, report_expression: str, report_expression_with_agents: str, 
+                 severity_expression: str, severity_expression_with_agents: str):
+
+        super().__init__(**vars(statement_info))
+
+        self.report_expression               = report_expression
+        self.report_expression_with_agents   = report_expression_with_agents
+        self.severity_expression             = severity_expression
+        self.severity_expression_with_agents = severity_expression_with_agents
+
 
 @dataclass
 class SignalAssignment(VHDLStatement):
@@ -104,13 +225,35 @@ class SignalAssignment(VHDLStatement):
     waveform                : str
     waveform_with_agents    : str
     
+    def __init__(self, statement_info: VHDLStatement, target: str, target_with_agent: str, 
+                 delay_mechanism: str, waveform: str, waveform_with_agents: str):
+
+        super().__init__(**vars(statement_info))
+
+        self.target                  = target
+        self.target_with_agent       = target_with_agent
+        self.delay_mechanism         = delay_mechanism
+        self.waveform                = waveform
+        self.waveform_with_agents    = waveform_with_agents
+
 @dataclass
 class ConditionalSignalAssignment(VHDLStatement):
     target                  : str
     target_with_agent       : str
     opts                    : str
     conditional_waveforms   : ConditionalWaveform
-    
+
+    def __init__(self, statement_info: VHDLStatement, target: str, target_with_agent: str, 
+                 opts: str, conditional_waveforms: ConditionalWaveform):
+
+        super().__init__(**vars(statement_info))
+
+        self.target                  = target
+        self.target_with_agent       = target_with_agent
+        self.opts                    = opts
+        self.conditional_waveforms   = conditional_waveforms
+
+
 @dataclass
 class ConditionalWaveforms():
     waveform                : str
@@ -118,6 +261,17 @@ class ConditionalWaveforms():
     condition               : str
     condition_with_agents   : str
     conditional_waveforms   : ConditionalWaveforms
+
+    def __init__(self, statement_info: VHDLStatement, waveform: str, waveform_with_agents: str,
+                condition: str, condition_with_agents: str, conditional_waveforms: ConditionalWaveforms):
+
+        super().__init__(**vars(statement_info))
+
+        self.waveform                = waveform
+        self.waveform_with_agents    = waveform_with_agents
+        self.condition               = condition
+        self.condition_with_agents   = condition_with_agents
+        self.conditional_waveforms   = conditional_waveforms
 
 @dataclass
 class SelectedSignalAssignment(VHDLStatement):
@@ -128,12 +282,33 @@ class SelectedSignalAssignment(VHDLStatement):
     expression_with_agents  : str
     selected_waveforms      : List[SelectedWaveform]
 
+    def __init__(self, statement_info: VHDLStatement, target: str, target_with_agent: str, delay_mechanism: str,
+                expression : str, expression_with_agents: str, selected_waveforms: List[SelectedWaveform]):
+
+        super().__init__(**vars(statement_info))
+
+        self.target                  = target
+        self.target_with_agent       = target_with_agent
+        self.delay_mechanism         = delay_mechanism
+        self.expression              = expression
+        self.expression_with_agents  = expression_with_agents
+        self.selected_waveforms      = selected_waveforms
+
 @dataclass
 class SelectedWaveform:
     waveform                : str 
     waveform_with_agetns    : str
     choice                  : str
     choice_with_agent       : str
+
+    def __init__(self, statement_info: VHDLStatement, waveform: str, waveform_with_agetns: str, choice: str, choice_with_agent: str):
+        super().__init__(**vars(statement_info))
+
+        waveform             = waveform
+        waveform_with_agetns = waveform_with_agetns
+        choice               = choice
+        choice_with_agent    = choice_with_agent
+
 
 @dataclass
 class ConditionalWaveform:
@@ -143,12 +318,33 @@ class ConditionalWaveform:
     condition_with_agents   : str
     conditional_waveforms   : ConditionalWaveform
 
+    def __init__(self, statement_info: VHDLStatement, waveform: str, waveform_with_agents: str,
+                condition: str, condition_with_agents: str, conditional_waveforms: ConditionalWaveform):
+
+        super().__init__(**vars(statement_info))
+
+        waveform                = waveform
+        waveform_with_agents    = waveform_with_agents
+        condition               = condition
+        condition_with_agents   = condition_with_agents
+        conditional_waveforms   = conditional_waveforms
+
 @dataclass
 class VariableAssignment(VHDLStatement):
     target                  : str
-    target_with_agents      : str
+    target_with_agent      : str
     expression              : str
     expression_with_agents  : str
+
+    def __init__(self, statement_info: VHDLStatement, target: str, target_with_agent: str,
+                expression  : str, expression_with_agents: str):
+
+        super().__init__(**vars(statement_info))
+
+        self.target                  = target
+        self.target_with_agent      = target_with_agent
+        self.expression              = expression
+        self.expression_with_agents  = expression_with_agents
 
 @dataclass
 class IfStatement(VHDLStatement):
@@ -160,21 +356,55 @@ class IfStatement(VHDLStatement):
     elsif_statements                : List[VHDLStatement]
     else_statements                 : List[VHDLStatement]
 
+    def __init__(self, statement_info: VHDLStatement, condition: str, condition_with_agents: str, statements: List[VHDLStatement],
+                elsif_condition: str, elsif_condition_with_agents: str, elsif_statements: List[VHDLStatement], else_statements: List[VHDLStatement]):
+        
+        super().__init__(**vars(statement_info))
+
+        self.condition                       = condition
+        self.condition_with_agents           = condition_with_agents
+        self.statements                      = statements
+        self.elsif_condition                 = elsif_condition
+        self.elsif_condition_with_agents     = elsif_condition_with_agents
+        self.elsif_statements                = elsif_statements
+        self.else_statements                 = else_statements
+
 @dataclass
 class CaseStatement(VHDLStatement):
     expression              : str
     expression_with_agents  : str
     case_alternatives       : List[CaseAlternative]
 
+    def __init__(self, statement_info: VHDLStatement, expression: str, expression_with_agents: str, case_alternatives: List[CaseAlternative]):
+        super().__init__(**vars(statement_info))
+
+        self.expression              = expression
+        self.expression_with_agents  = expression_with_agents
+        self.case_alternatives       = case_alternatives
+
 @dataclass
-class CaseAlternative():
-    choice     : str
-    statements : List[VHDLStatement]
+class CaseAlternative(VHDLStatement):
+    choices             : str
+    choices_with_agents : str
+    statements          : List[VHDLStatement]
+
+    def __init__(self, statement_info: VHDLStatement, choices: str, choices_with_agents: str, statements: List[VHDLStatement]):
+        super().__init__(**vars(statement_info))
+
+        self.choices             = choices
+        self.choices_with_agents = choices_with_agents
+        self.statements          = statements
 
 @dataclass
 class LoopStatement(VHDLStatement):
     iteration_scheme    : IterationScheme
     statements          : List[VHDLStatement]
+
+    def __init__(self, statement_info: VHDLStatement, iteration_scheme: IterationScheme, statements: List[VHDLStatement]):
+        super().__init__(**vars(statement_info))
+
+        iteration_scheme    = iteration_scheme
+        statements          = statements
 
 @dataclass
 class IterationScheme():
@@ -184,6 +414,12 @@ class IterationScheme():
 class WhileScheme(IterationScheme):
     condition               : str
     condition_with_agents   : str
+
+    def __init__(self, statement_info: VHDLStatement, condition: str, condition_with_agents: str):
+        super().__init__(**vars(statement_info))
+
+        condition               = condition               
+        condition_with_agents   = condition_with_agents   
 
 @dataclass
 class ForScheme(IterationScheme):
