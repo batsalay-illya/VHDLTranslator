@@ -77,27 +77,29 @@ class EnvironmentCreator(ResultFile):
 
         x : int = 0
         x_max : int = len(vhdlData.agent_types.keys())-1
+        print(f"DEBUG:{x}|{x_max}")
         result : str = ""
 
         result += "\n"
 
-        for agent_name, declarations in vhdlData.agent_types.items():
+        for (statement_name, agent_name), declarations in vhdlData.agent_types.items():
             if len(declarations) == 0:
-                result += f"\t\t{agent_name}:obj(Nil),\n"
+                result += f"\t\t{statement_name}:obj(Nil)"
             else:
-                result += f"\t\t{agent_name}:obj(\n"
+                result += f"\t\t{statement_name}:obj(\n"
                 result += ",\n".join(
                     f"\t\t\t{declaration.name}:{declaration.subtype_indication_js}" 
                     for declaration in declarations
                     if not isinstance(declaration, TypeDeclaration)
                 )
                 result += "\n\t\t)"
+                
+            if x < x_max:
+                result += ",\n"
+            else:
+                result += "\n"
 
-                x+=1
-                if x < x_max:
-                    result += ",\n"
-                else:
-                    result += "\n"
+            x+=1
 
         result += "\t"
 

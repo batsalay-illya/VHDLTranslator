@@ -2717,10 +2717,10 @@ class CustomVhdlVisitor(vhdlVisitor):
         #if not declaration_list:
         #    return
 
-        if parent.agent_name in self.vhdlData.agent_types:
-            self.vhdlData.agent_types[parent.agent_name].extend(declaration_list)
+        if parent.statement_name in self.vhdlData.agent_types:
+            self.vhdlData.agent_types[(parent.statement_name, parent.agent_name)].extend(declaration_list)
         else:
-            self.vhdlData.agent_types[parent.agent_name] = declaration_list
+            self.vhdlData.agent_types[(parent.statement_name, parent.agent_name)] = declaration_list
 
         self.vhdlData.declarations.extend(declaration_list)
 
@@ -2732,14 +2732,14 @@ class CustomVhdlVisitor(vhdlVisitor):
             print("Can't find agent name. Declaration list is empty...")
             return None
 
-        for agent in self.vhdlData.agent_types:
-            if not self.vhdlData.agent_types[agent]:
+        for (statement_name, agent_name) in self.vhdlData.agent_types:
+            if not self.vhdlData.agent_types[(statement_name, agent_name)]:
                 continue
 
-            declarations_names: List[str] = [declaration.name for declaration in self.vhdlData.agent_types[agent]]
+            declarations_names: List[str] = [declaration.name for declaration in self.vhdlData.agent_types[(statement_name, agent_name)]]
             
             if target in declarations_names:
-                return agent
+                return agent_name
 
         return None
 

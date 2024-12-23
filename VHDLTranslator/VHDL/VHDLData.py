@@ -42,7 +42,7 @@ class VHDLDesign:
 class VHDLData:
     design_list : List[VHDLDesign]
 
-    agent_types     : Dict[str, List[VHDLDeclaration]]
+    agent_types     : Dict[(str, str), List[VHDLDeclaration]]
     agents          : List[VHDLStatement]
     declarations    : List[VHDLDeclaration]
 
