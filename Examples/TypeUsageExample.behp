@@ -1,0 +1,8 @@
+beh0 = Sensitive(process_1, sensitive(snvclk) || sensitive(snvreset)),
+process_1 = (if_1; when_1 + when_2 + when_3 + when_4),
+if_1 = (if_1.if_1_asn_1 + if_1.if_1_asn_2 + !if_1.if_1_asn_3),
+when_1 = (when_1.when_1_asn_4; when_1.when_1_if_2),
+when_1.when_1_if_2 = (if_2.if_2_asn_5 + !if_2.if_2_asn_6),
+when_2 = (when_2.when_2_asn_7; when_2.when_2_asn_8),
+when_3 = (when_3.when_3_asn_9; when_3.when_3_asn_10),
+when_4 = (when_4.when_4_asn_11),

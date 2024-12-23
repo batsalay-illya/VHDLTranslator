@@ -4,7 +4,7 @@ from typing import List
 
 from Debug import Debug
 from ResultCreators.ResultFile import ResultFile
-from VHDL.VHDLData import EnumerationTypeDefinition, VHDLData
+from VHDL.VHDLData import VHDLData
 from VHDL.VHDLDeclaration import *
 
 class EnvironmentCreator(ResultFile): 
@@ -36,28 +36,26 @@ class EnvironmentCreator(ResultFile):
             self.output_log.info("Environment result status ... Success")
     
     def __get_types(self, vhdlData: VHDLData) -> str:
-        if not vhdlData.declaration_list:
+        if not vhdlData.has_type_declaration():
             return "Nil"
 
-        types : List[TypeDeclaration] = [
-            type_declaration for type_declaration in vhdlData.declaration_list
-            if isinstance(type_declaration, TypeDeclaration)
-        ]
+        result : str = ""
+        types : List[TypeDeclaration] = vhdlData.get_types()
 
-        if not types:
-            return "Nil"
+        for _type in types:
+            if isinstance(_type, EnumerationType):
+                result += f"\t\t{_type.name}TYPE:obj(\n\t\t\t"
+                result +=  ",\n\t\t\t".join(enumeration_literal for enumeration_literal in _type.enumeration_literals)
+                result += "\n\t\t)"
 
-        result : str = ",\n".join(f"\t\t{t.name}TYPE:obj(\n\t\t\t" +
-            (",\n\t\t\t".join(t.type_definition.enumeration_literals) if isinstance(t.type_definition, EnumerationTypeDefinition) else "") +
-            "\n\t\t)"
-            for t in types
-        )
         result = self.__put_content_inside_brackets(result)
 
         return result
 
     def __get_attributes(self, vhdlData: VHDLData) -> str:
-        if not vhdlData.declaration_list:
+        return "Nil"
+
+        if not vhdlData.declarations:
             return "Nil"
 
         type_declarations : List[TypeDeclaration] = [type_declaration for type_declaration in vhdlData.declaration_list if isinstance(type_declaration, TypeDeclaration)]
@@ -74,44 +72,42 @@ class EnvironmentCreator(ResultFile):
         return result
         
     def __get_agent_types(self, vhdlData: VHDLData) -> str:
-        if not vhdlData.declaration_list:
+        if not vhdlData.declarations:
             return "Nil"
 
+        x : int = 0
+        x_max : int = len(vhdlData.agent_types.keys())-1
         result : str = ""
-        agent_content : str = ""
-        index_x : int = 1
 
-        agent_keys = vhdlData.sorted_declaration_list.keys()
+        result += "\n"
 
-        for agent_name in list(agent_keys):
-            agent_declarations_lenght : int = len(vhdlData.sorted_declaration_list[agent_name])
-            if agent_declarations_lenght == 0:
-                result += f"\t\t{agent_name}:obj(Nil)"
-                continue
-            
-            result += f"\t\t{agent_name}:obj("
-
-            agent_content = ",\n".join(f"\t\t\t{declaration.name}:{declaration.subtype_indication_js}" for declaration in vhdlData.sorted_declaration_list[agent_name] if isinstance(declaration, (Port, SignalDeclaration, VariableDeclaration)))
-
-            result += self.__put_content_inside_brackets(agent_content, 2)
-
-            index_x += 1
-            if index_x > len(vhdlData.sorted_declaration_list.keys()):
-                result += f")"
+        for agent_name, declarations in vhdlData.agent_types.items():
+            if len(declarations) == 0:
+                result += f"\t\t{agent_name}:obj(Nil),\n"
             else:
-                result += f"),\n"
-                
-        result = self.__put_content_inside_brackets(result)
+                result += f"\t\t{agent_name}:obj(\n"
+                result += ",\n".join(
+                    f"\t\t\t{declaration.name}:{declaration.subtype_indication_js}" 
+                    for declaration in declarations
+                    if not isinstance(declaration, TypeDeclaration)
+                )
+                result += "\n\t\t)"
+
+                x+=1
+                if x < x_max:
+                    result += ",\n"
+                else:
+                    result += "\n"
+
+        result += "\t"
 
         return result
     
     def __get_agents(self, vhdlData: VHDLData) -> str:
-        if not vhdlData.agent_list:
+        if not vhdlData.agents:
             return "Nil"
 
-        result : str = ""
-
-        result = ",\n".join(f"\t\t{agent.statement_name}:obj({agent.agent_name})" for agent in vhdlData.agent_list)
+        result : str = ",\n".join(f"\t\t{agent.statement_name}:obj({agent.agent_name})" for agent in vhdlData.agents)
 
         result = self.__put_content_inside_brackets(result)
 
@@ -134,7 +130,9 @@ class EnvironmentCreator(ResultFile):
         return result
     
     def __get_logic_formula(self, vhdlData: VHDLData) -> str:
-        if not vhdlData.declaration_list:
+        return "Nil"
+
+        if not vhdlData.declarations:
             return "Nil"
 
         declarations_with_axiom = [declaration for declaration in vhdlData.declaration_list if hasattr(declaration, 'expression') and not isinstance(declaration, Generic)]

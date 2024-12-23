@@ -52,8 +52,7 @@ class BehaviourCreator(ResultFile):
             pass
 
         if isinstance(statement, (SelectedSignalAssignment, ConditionalSignalAssignment)):
-            self.concurrent_assign_index += 1
-            return f"Sensitive({statement.statement_name})"
+            return f"Sensitive({statement.full_behaviour_name})"
 
         if isinstance(statement, ProcessStatement):
             if not statement.sensitivity_list:

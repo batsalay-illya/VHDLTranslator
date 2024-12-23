@@ -53,7 +53,11 @@ class ActionCreator(ResultFile):
                 self.__visit_statement(alternative, result_file)
 
         if isinstance(statement, CaseAlternative):
-            result_file.write(f"{statement.full_behaviour_name} = (({statement.choices_with_agents}) ->(\"{statement.get_root_statement().statement_name}#{statement.get_root_statement().agent_name}: action '{statement.choices}';\") (1)),\n")
+            if "others" in statement.choices_with_agents:
+                result_file.write(f"{statement.full_behaviour_name} = ((1) ->(\"{statement.get_root_statement().statement_name}#{statement.get_root_statement().agent_name}: action '{statement.choices}';\") (1)),\n")
+            else:
+                result_file.write(f"{statement.full_behaviour_name} = (({statement.choices_with_agents}) ->(\"{statement.get_root_statement().statement_name}#{statement.get_root_statement().agent_name}: action '{statement.choices}';\") (1)),\n")
+            
             for alt_statement in statement.statements:
                 self.__visit_statement(alt_statement, result_file)
 

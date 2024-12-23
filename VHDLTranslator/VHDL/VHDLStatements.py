@@ -16,6 +16,19 @@ class VHDLStatement:
 
     agent_name          : str
 
+    def __hash__(self):
+        return hash((self.statement_name, self.behaviour_name, self.full_behaviour_name, self.agent_name))
+
+    def __eq__(self, other):
+        if not isinstance(other, VHDLStatement):
+            return False
+        return (
+            self.statement_name == other.statement_name and
+            self.behaviour_name == other.behaviour_name and
+            self.full_behaviour_name == other.full_behaviour_name and
+            self.agent_name == other.agent_name
+        )
+
     @staticmethod
     def from_tuple(statement_class: VHDLStatement, parent: VHDLStatement, info: Tuple[str, str, str, str]):
         return VHDLStatement(statement_class, parent, *info)
@@ -37,6 +50,7 @@ class Entity(VHDLStatement):
 
         self.generic = generic
         self.port    = port
+    
 
 @dataclass    
 class Architecture(VHDLStatement):
@@ -253,26 +267,6 @@ class ConditionalSignalAssignment(VHDLStatement):
         self.opts                    = opts
         self.conditional_waveforms   = conditional_waveforms
 
-
-@dataclass
-class ConditionalWaveforms():
-    waveform                : str
-    waveform_with_agents    : str
-    condition               : str
-    condition_with_agents   : str
-    conditional_waveforms   : ConditionalWaveforms
-
-    def __init__(self, statement_info: VHDLStatement, waveform: str, waveform_with_agents: str,
-                condition: str, condition_with_agents: str, conditional_waveforms: ConditionalWaveforms):
-
-        super().__init__(**vars(statement_info))
-
-        self.waveform                = waveform
-        self.waveform_with_agents    = waveform_with_agents
-        self.condition               = condition
-        self.condition_with_agents   = condition_with_agents
-        self.conditional_waveforms   = conditional_waveforms
-
 @dataclass
 class SelectedSignalAssignment(VHDLStatement):
     target                  : str
@@ -301,14 +295,6 @@ class SelectedWaveform:
     choice                  : str
     choice_with_agent       : str
 
-    def __init__(self, statement_info: VHDLStatement, waveform: str, waveform_with_agetns: str, choice: str, choice_with_agent: str):
-        super().__init__(**vars(statement_info))
-
-        waveform             = waveform
-        waveform_with_agetns = waveform_with_agetns
-        choice               = choice
-        choice_with_agent    = choice_with_agent
-
 
 @dataclass
 class ConditionalWaveform:
@@ -317,17 +303,6 @@ class ConditionalWaveform:
     condition               : str
     condition_with_agents   : str
     conditional_waveforms   : ConditionalWaveform
-
-    def __init__(self, statement_info: VHDLStatement, waveform: str, waveform_with_agents: str,
-                condition: str, condition_with_agents: str, conditional_waveforms: ConditionalWaveform):
-
-        super().__init__(**vars(statement_info))
-
-        waveform                = waveform
-        waveform_with_agents    = waveform_with_agents
-        condition               = condition
-        condition_with_agents   = condition_with_agents
-        conditional_waveforms   = conditional_waveforms
 
 @dataclass
 class VariableAssignment(VHDLStatement):

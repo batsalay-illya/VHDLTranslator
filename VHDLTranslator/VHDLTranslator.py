@@ -91,9 +91,8 @@ def main():
     
     try:
         vhdl_path : str = get_filepath(output_log)
-        vhdlData = translate_file(output_log, vhdl_path)    
 
-        Debug.detect_encoding(output_log, vhdl_path)
+        vhdlData = translate_file(output_log, vhdl_path)    
 
         result_path = get_result_path(output_log, vhdl_path)
 

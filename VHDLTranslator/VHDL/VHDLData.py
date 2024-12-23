@@ -24,44 +24,7 @@ class DiscreteRange():
 @dataclass
 class IndexConstraint():
     pass
-
-# Type definition
-#region Type definition
-@dataclass
-class TypeDefinition():
-    pass
-
-@dataclass
-class AccessTypeDefinition():
-    subtype     : str
-    subtype_js  : str
-
-@dataclass
-class FileTypeDefinition():
-    subtype     : str
-    subtype_js  : str
-
-@dataclass
-class UnconstrainedArrayDefinition():
-    subtype_definition : List[str]
-    subtype     : str
-    subtype_js  : str
-
-@dataclass
-class ConstrainedArrayDefinition():
-    index_constraint    : IndexConstraint
-    subtype             : str
-    subtype_js          : str
-
-@dataclass
-class RecordTypeDefinition():
-    pass
-
-@dataclass
-class EnumerationTypeDefinition():
-    enumeration_literals : List[str]
-    
-#endregion
+ 
 #endregion
 
 @dataclass
@@ -79,12 +42,12 @@ class VHDLDesign:
 class VHDLData:
     design_list : List[VHDLDesign]
 
-    sorted_declaration_list : Dict[str, List[VHDLDeclaration]]
-    declaration_list : List[VHDLDeclaration]
-    agent_list : List[VHDLStatement]
+    agent_types     : Dict[str, List[VHDLDeclaration]]
+    agents          : List[VHDLStatement]
+    declarations    : List[VHDLDeclaration]
 
-    def sorted_declaration_list_append(self, key: str, declaration: List[VHDLDeclaration]):
-        if key in self.sorted_declaration_list:
-            self.sorted_declaration_list[key].extend(declaration)
-        else:
-            self.sorted_declaration_list[key] = declaration
+    def has_type_declaration(self):
+        return any(isinstance(declaration, TypeDeclaration) for declaration in self.declarations)
+
+    def get_types(self):
+        return [declaration for declaration in self.declarations if isinstance(declaration, TypeDeclaration)]

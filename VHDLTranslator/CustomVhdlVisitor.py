@@ -37,6 +37,7 @@ class CustomVhdlVisitor(vhdlVisitor):
                 CaseAlternative     : "when",
                 
                 SignalAssignment    : "asn",
+                ConditionalSignalAssignment : "asn",
                 VariableAssignment  : "vasn"
             }
 
@@ -85,7 +86,9 @@ class CustomVhdlVisitor(vhdlVisitor):
             if cls in (Entity, Architecture):
                 return None
 
-            if cls in (ProcessStatement, BlockStatement) or parent.statement_class is ProcessStatement:
+
+
+            if cls in (ProcessStatement, BlockStatement, ConditionalSignalAssignment) or parent.statement_class is ProcessStatement:
                 name : str = self.__behaviour_name_mapping[cls]
                 index : int = self.__behaviour_index[cls]
                 return f"{name}_{index}"
@@ -256,7 +259,9 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         entity = Entity(statement_info, generic, port)
         
-        self.vhdlData.agent_list.append(entity)
+        self.append_declarations(generic, entity)
+        self.append_declarations(port, entity)
+        self.append_agent(statement_info)
 
         return entity
 
@@ -322,8 +327,8 @@ class CustomVhdlVisitor(vhdlVisitor):
             for identifier in identifier_list
         ]
 
-        self.vhdlData.declaration_list.extend(generic_list)
-       #self.vhdlData.sorted_declaration_list_append(agent_name, [generic_list])
+        #self.vhdlData.declaration_list.extend(generic_list)
+        #self.vhdlData.sorted_declaration_list_append(agent_name, [generic_list])
 
         return generic_list
 
@@ -388,8 +393,8 @@ class CustomVhdlVisitor(vhdlVisitor):
 
             port_list.append(port)
 
-            self.vhdlData.declaration_list.append(port)
-            self.vhdlData.sorted_declaration_list_append(agent_name, [port])
+            #self.vhdlData.declaration_list.append(port)
+            #self.vhdlData.sorted_declaration_list_append(agent_name, [port])
 
         return port_list
 
@@ -411,20 +416,19 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         statement_info : VHDLStatement = VHDLStatement.from_tuple(Architecture, None, self.statement_manager.get_statement_general_info(Architecture, ctx, None))
         self.output_log.debug(f"architecture - statement_name:{statement_info.statement_name}, behaviour_name:{statement_info.behaviour_name}, full_behaviour_name:{statement_info.full_behaviour_name}, agent_name:{statement_info.agent_name}")
+        self.append_agent(statement_info)
 
         architecture_declarative_part : List[VHDLDeclaration] = []
         architecture_statement_part   : List[VHDLStatement] = []
 
-        architecture_declarative_part = self.visitArchitecture_declarative_part(ctx.architecture_declarative_part(), statement_info.agent_name)
-        architecture_statement_part = self.visitArchitecture_statement_part(ctx.architecture_statement_part(), parent=statement_info)
+        architecture_declarative_part = self.visitArchitecture_declarative_part(ctx.architecture_declarative_part(), statement_info)
+        architecture_statement_part = self.visitArchitecture_statement_part(ctx.architecture_statement_part(), statement_info)
 
         architecture : Architecture = Architecture(statement_info, architecture_declarative_part, architecture_statement_part)
 
-        self.vhdlData.agent_list.append(architecture)
-
         return architecture
 
-    def visitArchitecture_declarative_part(self, ctx:vhdlParser.Architecture_declarative_partContext, agent_name: str = None) -> List[VHDLDeclaration]:
+    def visitArchitecture_declarative_part(self, ctx:vhdlParser.Architecture_declarative_partContext, parent: VHDLStatement = None) -> List[VHDLDeclaration]:
         '''
         architecture_declarative_part
             : (block_declarative_item)*
@@ -436,7 +440,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         declarations : List[VHDLDeclaration] = []
 
         for item in ctx.block_declarative_item():
-            declarative_item = self.visitBlock_declarative_item(item, agent_name)
+            declarative_item = self.visitBlock_declarative_item(item, parent)
 
             if isinstance(declarative_item, List):
                 for item in declarative_item:
@@ -444,6 +448,7 @@ class CustomVhdlVisitor(vhdlVisitor):
             else:
                 declarations.append(declarative_item)
 
+        #self.append_declarations(declarations, parent)
         return declarations
 
     def visitArchitecture_statement_part(self, ctx:vhdlParser.Architecture_statement_partContext, parent: VHDLStatement = None) -> List[VHDLDeclaration]:
@@ -633,9 +638,6 @@ class CustomVhdlVisitor(vhdlVisitor):
 
             variable_list.append(variable)
 
-            self.vhdlData.declaration_list.append(variable)
-            self.vhdlData.sorted_declaration_list_append(agent_name, [variable])
-
         return variable_list
 
 
@@ -649,14 +651,14 @@ class CustomVhdlVisitor(vhdlVisitor):
         '''
 
         identifier      : str = ctx.identifier().getText()
-        type_definition : TypeDefinition = None
+        #type_definition : TypeDeclaration = None
 
         if ctx.type_definition():
-            type_definition = self.visit(ctx.type_definition())
+            return self.visitType_definition(ctx.type_definition(), identifier, agent_name)
 
-        return TypeDeclaration(identifier, agent_name, type_definition)
+        #return TypeDeclaration(identifier, agent_name, type_definition)
 
-    def visitType_definition(self, ctx:vhdlParser.Type_definitionContext):
+    def visitType_definition(self, ctx:vhdlParser.Type_definitionContext, name: str = None, agent_name: str = None):
         '''
         type_definition
             : scalar_type_definition
@@ -667,18 +669,18 @@ class CustomVhdlVisitor(vhdlVisitor):
         '''
 
         if ctx.scalar_type_definition():
-            return self.visit(ctx.scalar_type_definition())
+            return self.visitScalar_type_definition(ctx.scalar_type_definition(), name, agent_name)
 
         if ctx.composite_type_definition():
-            return self.visit(ctx.composite_type_definition())
+            return self.visitComposite_type_definition(ctx.composite_type_definition(), name, agent_name)
 
         if ctx.access_type_definition():
-            return self.visit(ctx.access_type_definition())
+            return self.visitAccess_type_definition(ctx.access_type_definition(), name, agent_name)
 
         if ctx.file_type_definition():
-            return self.visit(ctx.file_type_definition())
+            return self.visitFile_type_definition(ctx.file_type_definition(), name, agent_name)
 
-    def visitEnumeration_type_definition(self, ctx:vhdlParser.Enumeration_type_definitionContext):
+    def visitEnumeration_type_definition(self, ctx:vhdlParser.Enumeration_type_definitionContext, name: str = None, agent_name: str = None):
         '''
         enumeration_type_definition
             : LPAREN enumeration_literal (COMMA enumeration_literal)* RPAREN
@@ -690,7 +692,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         for index in range(len(ctx.enumeration_literal())):
             enumeration_literals.append(self.visit(ctx.enumeration_literal(index)))
 
-        return EnumerationTypeDefinition(enumeration_literals)
+        return EnumerationType(name, agent_name, enumeration_literals)
     #endregion
 
     # NOT IMPLEMENTED, WORK IN PROGRESS....
@@ -853,7 +855,7 @@ class CustomVhdlVisitor(vhdlVisitor):
             name : str = ctx.name().getText()
             return name, f"{self.find_agent(name)}.{name}" if self.find_agent(name) is not None else name
 
-    def visitRecord_type_definition(self, ctx:vhdlParser.Record_type_definitionContext) -> RecordTypeDefinition:
+    def visitRecord_type_definition(self, ctx:vhdlParser.Record_type_definitionContext) -> RecordType:
         '''
         record_type_definition
             : RECORD (element_declaration)+ END RECORD (identifier)?
@@ -865,9 +867,9 @@ class CustomVhdlVisitor(vhdlVisitor):
         for index in range(len(ctx.element_declaration())):
             element_declarations.append(self.visit(ctx.element_declaration(index)))
 
-        return RecordTypeDefinition(element_declarations)
+        return RecordType(element_declarations)
 
-    def visitAccess_type_definition(self, ctx:vhdlParser.Access_type_definitionContext) -> AccessTypeDefinition:
+    def visitAccess_type_definition(self, ctx:vhdlParser.Access_type_definitionContext) -> AccessType:
         '''
         access_type_definition
             : ACCESS subtype_indication
@@ -879,9 +881,9 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         subtype, subtype_js = self.visit(ctx.subtype_indication())
 
-        return AccessTypeDefinition(subtype, subtype_js)
+        return AccessType(subtype, subtype_js)
 
-    def visitFile_type_definition(self, ctx:vhdlParser.File_type_definitionContext) -> FileTypeDefinition:
+    def visitFile_type_definition(self, ctx:vhdlParser.File_type_definitionContext) -> FileType:
         '''
         file_type_definition
             : FILE OF subtype_indication
@@ -893,7 +895,7 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         subtype, subtype_js = self.visit(ctx.subtype_indication())
 
-        return FileTypeDefinition(subtype, subtype_js)
+        return FileType(subtype, subtype_js)
 
     
     def visitComposite_type_definition(self, ctx:vhdlParser.Composite_type_definitionContext):
@@ -924,7 +926,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         if ctx.constrained_array_definition():
             return self.visit(ctx.constrained_array_definition())
 
-    def visitUnconstrained_array_definition(self, ctx:vhdlParser.Unconstrained_array_definitionContext) -> UnconstrainedArrayDefinition:
+    def visitUnconstrained_array_definition(self, ctx:vhdlParser.Unconstrained_array_definitionContext) -> UnconstrainedArray:
         '''
         unconstrained_array_definition
             : ARRAY LPAREN index_subtype_definition (COMMA index_subtype_definition)* RPAREN OF subtype_indication
@@ -940,7 +942,7 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         subtype, subtype_js = self.visit(ctx.subtype_indication())
 
-        return UnconstrainedArrayDefinition(index_subtype_definition, subtype, subtype_js)
+        return UnconstrainedArray(index_subtype_definition, subtype, subtype_js)
 
     def visitIndex_subtype_definition(self, ctx:vhdlParser.Index_subtype_definitionContext) -> str:
         '''
@@ -950,7 +952,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         '''
         return ctx.name().getText()
 
-    def visitConstrained_array_definition(self, ctx:vhdlParser.Constrained_array_definitionContext) -> ConstrainedArrayDefinition:
+    def visitConstrained_array_definition(self, ctx:vhdlParser.Constrained_array_definitionContext) -> ConstrainedArray:
         '''
         constrained_array_definition
             : ARRAY index_constraint OF subtype_indication
@@ -964,11 +966,11 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         subtype, subtype_js = self.visit(ctx.subtype_indication())
 
-        return ConstrainedArrayDefinition(index_constraint, subtype, subtype_js)
+        return ConstrainedArray(index_constraint, subtype, subtype_js)
     
     
 
-    def visitScalar_type_definition(self, ctx:vhdlParser.Scalar_type_definitionContext):
+    def visitScalar_type_definition(self, ctx:vhdlParser.Scalar_type_definitionContext, name: str = None, agent_name: str = None):
         '''
             scalar_type_definition
                 : physical_type_definition
@@ -976,9 +978,17 @@ class CustomVhdlVisitor(vhdlVisitor):
                 | range_constraint
                 ;
             '''
-        return self.visitChildren(ctx)
+        
+        if ctx.physical_type_definition():
+            return self.visitPhysical_type_definition(ctx.physical_type_definition(), name, agent_name)
 
-    def visitPhysical_type_definition(self, ctx:vhdlParser.Physical_type_definitionContext):
+        if ctx.enumeration_type_definition():
+            return self.visitEnumeration_type_definition(ctx.enumeration_type_definition(), name, agent_name)
+
+        if ctx.range_constraint():
+            return self.visitRange_constraint(ctx.range_constraint(), name, agent_name)
+
+    def visitPhysical_type_definition(self, ctx:vhdlParser.Physical_type_definitionContext, name: str = None, agent_name: str = None):
         '''
         physical_type_definition
             : range_constraint UNITS base_unit_declaration (secondary_unit_declaration)* END UNITS (
@@ -1064,7 +1074,7 @@ class CustomVhdlVisitor(vhdlVisitor):
     
     def visitBlock_declarative_item(self, ctx:vhdlParser.Block_declarative_itemContext, parent: VHDLStatement) -> VHDLDeclaration:
         '''
-        block_declarative_item
+        parent_declarative_item
             : subprogram_declaration
             | subprogram_body
             | type_declaration
@@ -1156,12 +1166,10 @@ class CustomVhdlVisitor(vhdlVisitor):
         if ctx.terminal_declaration():
             declaration = self.visitTerminal_declaration(ctx.terminal_declaration(), parent)
 
-        if isinstance(declaration, List):
-            self.vhdlData.declaration_list.extend(declaration)
-            self.vhdlData.sorted_declaration_list_append(parent, declaration)
+        if isinstance(declaration, list):
+            self.append_declarations(declaration, parent)
         else:
-            self.vhdlData.declaration_list.append(declaration)
-            self.vhdlData.sorted_declaration_list_append(parent, [declaration])
+            self.append_declarations([declaration], parent)
 
         return declaration
 
@@ -1208,7 +1216,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         
         process : ProcessStatement = ProcessStatement(statement_info, sensitivity_list, sensitivity_list_with_agents, declarations, statements)
 
-        self.vhdlData.agent_list.append(process)
+        self.append_agent(statement_info)
 
         return process
 
@@ -1253,13 +1261,16 @@ class CustomVhdlVisitor(vhdlVisitor):
         for index in range(len(ctx.process_declarative_item())):
             declarative_item = self.visitProcess_declarative_item(ctx.process_declarative_item(index), parent)
 
-            if isinstance(declarative_item, List):
-                for item in declarative_item:
-                    declarations.append(item)
-            else:
-                declarations.append(declarative_item)
+            declarations.extend(declarative_item)
+            #if isinstance(declarative_item, List):
+            #    for item in declarative_item:
+            #        declarations.append(item)
+            #else:
+            #    declarations.append(declarative_item)
         
         self.output_log.debug(f"{len(ctx.process_declarative_item())} declarations found")
+
+        self.append_declarations(declarations, parent)
 
         return declarations
     
@@ -1283,44 +1294,45 @@ class CustomVhdlVisitor(vhdlVisitor):
         '''
         
         if ctx.subprogram_declaration():
-            return self.visitSubprogram_declaration(ctx.subprogram_declaration(), process.agent_name)
+            declaration = self.visitSubprogram_declaration(ctx.subprogram_declaration(), process.agent_name)
 
         if ctx.subprogram_body():
-            return self.visitSubprogram_body(ctx.subprogram_body(), process.agent_name)
+            declaration = self.visitSubprogram_body(ctx.subprogram_body(), process.agent_name)
 
         if ctx.type_declaration():
-            return self.visitType_declaration(ctx.type_declaration(), process.agent_name)
+            declaration = self.visitType_declaration(ctx.type_declaration(), process.agent_name)
 
         if ctx.subtype_declaration():
-            return self.visitSubtype_declaration(ctx.subtype_declaration(), process.agent_name)
+            declaration = self.visitSubtype_declaration(ctx.subtype_declaration(), process.agent_name)
 
         if ctx.constant_declaration():
-            return self.visitConstant_declaration(ctx.constant_declaration(), process.agent_name)
+            declaration = self.visitConstant_declaration(ctx.constant_declaration(), process.agent_name)
 
         if ctx.variable_declaration():
-            return self.visitVariable_declaration(ctx.variable_declaration(), process.agent_name)
+            declaration = self.visitVariable_declaration(ctx.variable_declaration(), process.agent_name)
 
         if ctx.file_declaration():
-            return self.visitFile_declaration(ctx.file_declaration(), process.agent_name)
+            declaration = self.visitFile_declaration(ctx.file_declaration(), process.agent_name)
 
         if ctx.alias_declaration():
-            return self.visitAlias_declaration(ctx.alias_declaration(), process.agent_name)
+            declaration = self.visitAlias_declaration(ctx.alias_declaration(), process.agent_name)
 
         if ctx.attribute_declaration():
-            return self.visitAttribute_declaration(ctx.attribute_declaration(), process.agent_name)
+            declaration = self.visitAttribute_declaration(ctx.attribute_declaration(), process.agent_name)
 
         if ctx.attribute_specification():
-            return self.visitAttribute_specification(ctx.attribute_specification(), process.agent_name)
+            declaration = self.visitAttribute_specification(ctx.attribute_specification(), process.agent_name)
 
         if ctx.use_clause():
-            return self.visitUse_clause(ctx.use_clause(), process.agent_name)
+            declaration = self.visitUse_clause(ctx.use_clause(), process.agent_name)
 
         if ctx.group_template_declaration():
-            return self.visitGroup_template_declaration(ctx.group_template_declaration(), process.agent_name)
+            declaration = self.visitGroup_template_declaration(ctx.group_template_declaration(), process.agent_name)
 
         if ctx.group_declaration():
-            return self.visitGroup_declaration(ctx.group_declaration(), process.agent_name)
+            declaration = self.visitGroup_declaration(ctx.group_declaration(), process.agent_name)
 
+        return declaration
 
     def visitProcess_statement_part(self, ctx:vhdlParser.Process_statement_partContext, process: VHDLStatement = None):
         '''
@@ -2701,18 +2713,30 @@ class CustomVhdlVisitor(vhdlVisitor):
         return self.vhdlData
 
 
-    def find_agent(self, target: str) -> str:
-        declaration_list : Dict[str, List[VHDLDeclaration]] = self.vhdlData.sorted_declaration_list
+    def append_declarations(self, declaration_list: List[VHDLDeclaration], parent: VHDLStatement) -> None:
+        #if not declaration_list:
+        #    return
 
-        if not declaration_list:
+        if parent.agent_name in self.vhdlData.agent_types:
+            self.vhdlData.agent_types[parent.agent_name].extend(declaration_list)
+        else:
+            self.vhdlData.agent_types[parent.agent_name] = declaration_list
+
+        self.vhdlData.declarations.extend(declaration_list)
+
+    def append_agent(self, statement: VHDLStatement):
+        self.vhdlData.agents.append(statement)
+
+    def find_agent(self, target: str) -> str:
+        if not self.vhdlData.agent_types:
             print("Can't find agent name. Declaration list is empty...")
             return None
 
-        for agent in declaration_list:
-            if not declaration_list[agent]:
+        for agent in self.vhdlData.agent_types:
+            if not self.vhdlData.agent_types[agent]:
                 continue
 
-            declarations_names: List[str] = [declaration.name for declaration in declaration_list[agent]]
+            declarations_names: List[str] = [declaration.name for declaration in self.vhdlData.agent_types[agent]]
             
             if target in declarations_names:
                 return agent

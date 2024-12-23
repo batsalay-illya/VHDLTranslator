@@ -36,7 +36,54 @@ class SubprogramBody(VHDLDeclaration):
 
 @dataclass
 class TypeDeclaration(VHDLDeclaration):
-    type_definition : str
+    ...
+
+# Scalar type definition
+#region ScalarType
+@dataclass
+class PhysicalType(TypeDeclaration):
+    ...
+
+@dataclass
+class EnumerationType(TypeDeclaration):
+    enumeration_literals : List[str]
+
+@dataclass
+class RangeConstraint(TypeDeclaration):
+    ...
+#endregion
+
+# Composite type definition
+#region CompositeType
+
+ # Array type definition
+@dataclass
+class UnconstrainedArray(TypeDeclaration):
+    ...
+
+@dataclass
+class ConstrainedArray(TypeDeclaration):
+    ...
+
+# Record type
+@dataclass
+class RecordType(TypeDeclaration):
+    ...
+#endregion
+
+# Access type definition
+#region AccessType
+@dataclass
+class AccessType(TypeDeclaration):
+    ...
+#endregion
+
+# File type definition
+#region FileType
+@dataclass
+class FileType(TypeDeclaration):
+    ...
+#endregion
 
 @dataclass
 class SubtypeDeclaration(VHDLDeclaration):
