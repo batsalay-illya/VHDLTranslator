@@ -1,5 +1,6 @@
 import logging
 
+import re
 from typing import Tuple
 from Debug import Debug
 
@@ -99,11 +100,11 @@ class CustomVhdlVisitor(vhdlVisitor):
                 if parent.parent.statement_class is ProcessStatement:
                     return f"{name}_{index}"
 
-                return f"{parent.parent.behaviour_name}.{parent.parent.behaviour_name}_{name}_{index}.body"
+                return f"{parent.parent.behaviour_name}_{name}_{index}"
 
             name : str = self.__behaviour_name_mapping[cls]
             index : int = self.__behaviour_index[cls]
-            return f"{parent.behaviour_name}.{parent.behaviour_name}_{name}_{index}"
+            return f"{parent.behaviour_name}_{name}_{index}"
 
         def __get_agent_name(self, cls, parent: VHDLStatement):
             if (cls in (Entity, Architecture)):
@@ -380,6 +381,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         signal_mode             : str = ctx.signal_mode().getText() if ctx.signal_mode() else None
         subtype_indication      : str = None
         subtype_indication_js   : str = None
+
         expression              : str = None
         expression_with_agents  : str = None
 
@@ -591,6 +593,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         identifier_list : List[str] = self.visit(ctx.identifier_list())
         subtype_indication      : str = None
         subtype_indication_js   : str = None
+        subtype_length          : int = None
         signal_kind             : str = None
         expression              : str = None
         expression_with_agents  : str = None
@@ -840,7 +843,7 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         return ElementDeclaration(None, None, identifier_list, subtype, subtype_js)
 
-    def visitRange_decl(self, ctx:vhdlParser.Range_declContext) -> Tuple[str, str]:
+    def visitRange_decl(self, ctx:vhdlParser.Range_declContext) -> Tuple[str, int]:
         '''
         range_decl
             : explicit_range
@@ -1101,70 +1104,70 @@ class CustomVhdlVisitor(vhdlVisitor):
         '''
 
         if ctx.subprogram_declaration():
-            declaration = self.visitSubprogram_declaration(ctx.subprogram_declaration(), parent)
+            declaration = self.visitSubprogram_declaration(ctx.subprogram_declaration(), parent.agent_name)
 
         if ctx.subprogram_body():
-            declaration = self.visitSubprogram_body(ctx.subprogram_body(), parent)
+            declaration = self.visitSubprogram_body(ctx.subprogram_body(), parent.agent_name)
 
         if ctx.type_declaration():
-            declaration = self.visitType_declaration(ctx.type_declaration(), parent)
+            declaration = self.visitType_declaration(ctx.type_declaration(), parent.agent_name)
 
         if ctx.subtype_declaration():
-            declaration = self.visitSubtype_declaration(ctx.subtype_declaration(), parent)
+            declaration = self.visitSubtype_declaration(ctx.subtype_declaration(), parent.agent_name)
 
         if ctx.constant_declaration():
-            declaration = self.visitConstant_declaration(ctx.constant_declaration(), parent)
+            declaration = self.visitConstant_declaration(ctx.constant_declaration(), parent.agent_name)
 
         if ctx.signal_declaration():
-            declaration = self.visitSignal_declaration(ctx.signal_declaration(), parent)
+            declaration = self.visitSignal_declaration(ctx.signal_declaration(), parent.agent_name)
 
         if ctx.variable_declaration():
-            declaration = self.visitVariable_declaration(ctx.variable_declaration(), parent)
+            declaration = self.visitVariable_declaration(ctx.variable_declaration(), parent.agent_name)
 
         if ctx.file_declaration():
-            declaration = self.visitFile_declaration(ctx.file_declaration(), parent)
+            declaration = self.visitFile_declaration(ctx.file_declaration(), parent.agent_name)
 
         if ctx.alias_declaration():
-            declaration = self.visitAlias_declaration(ctx.alias_declaration(), parent)
+            declaration = self.visitAlias_declaration(ctx.alias_declaration(), parent.agent_name)
 
         if ctx.component_declaration():
-            declaration = self.visitComponent_declaration(ctx.component_declaration(), parent)
+            declaration = self.visitComponent_declaration(ctx.component_declaration(), parent.agent_name)
 
         if ctx.attribute_declaration():
-            declaration = self.visitAttribute_declaration(ctx.attribute_declaration(), parent)
+            declaration = self.visitAttribute_declaration(ctx.attribute_declaration(), parent.agent_name)
 
         if ctx.attribute_specification():
-            declaration = self.visitAttribute_specification(ctx.attribute_specification(), parent)
+            declaration = self.visitAttribute_specification(ctx.attribute_specification(), parent.agent_name)
 
         if ctx.configuration_specification():
-            declaration = self.visitConfiguration_specification(ctx.configuration_specification(), parent)
+            declaration = self.visitConfiguration_specification(ctx.configuration_specification(), parent.agent_name)
 
         if ctx.disconnection_specification():
-            declaration = self.visitDisconnection_specification(ctx.disconnection_specification(), parent)
+            declaration = self.visitDisconnection_specification(ctx.disconnection_specification(), parent.agent_name)
 
         if ctx.step_limit_specification():
-            declaration = self.visitStep_limit_specification(ctx.step_limit_specification(), parent)
+            declaration = self.visitStep_limit_specification(ctx.step_limit_specification(), parent.agent_name)
 
         if ctx.use_clause():
-            declaration = self.visitUse_clause(ctx.use_clause(), parent)
+            declaration = self.visitUse_clause(ctx.use_clause(), parent.agent_name)
 
         if ctx.group_template_declaration():
-            declaration = self.visitGroup_template_declaration(ctx.group_template_declaration(), parent)
+            declaration = self.visitGroup_template_declaration(ctx.group_template_declaration(), parent.agent_name)
 
         if ctx.group_declaration():
-            declaration = self.visitGroup_declaration(ctx.group_declaration(), parent)
+            declaration = self.visitGroup_declaration(ctx.group_declaration(), parent.agent_name)
 
         if ctx.nature_declaration():
-            declaration = self.visitNature_declaration(ctx.nature_declaration(), parent)
+            declaration = self.visitNature_declaration(ctx.nature_declaration(), parent.agent_name)
 
         if ctx.subnature_declaration():
-            declaration = self.visitSubnature_declaration(ctx.subnature_declaration(), parent)
+            declaration = self.visitSubnature_declaration(ctx.subnature_declaration(), parent.agent_name)
 
         if ctx.quantity_declaration():
-            declaration = self.visitQuantity_declaration(ctx.quantity_declaration(), parent)
+            declaration = self.visitQuantity_declaration(ctx.quantity_declaration(), parent.agent_name)
 
         if ctx.terminal_declaration():
-            declaration = self.visitTerminal_declaration(ctx.terminal_declaration(), parent)
+            declaration = self.visitTerminal_declaration(ctx.terminal_declaration(), parent.agent_name)
 
         if isinstance(declaration, list):
             self.append_declarations(declaration, parent)
@@ -1434,7 +1437,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         waveform : str = None
         waveform_with_agents : str = None
 
-        waveform, waveform_with_agents = self.visit(ctx.waveform())
+        waveform, waveform_with_agents = self.visitWaveform(ctx.waveform(), target)
 
         if ctx.delay_mechanism():
             delay_mechanism = ctx.target().getText()
@@ -2045,9 +2048,7 @@ class CustomVhdlVisitor(vhdlVisitor):
             ;
         '''
 
-        selected_name : str = ctx.selected_name(0).getText()
-        selected_name_js : str = self.convert_subtype_to_js(selected_name)
-
+        length : int = 0
         selected_name_2 : str = ""
         constraint : str = ""
         tolerance_aspect : str = ""
@@ -2057,8 +2058,11 @@ class CustomVhdlVisitor(vhdlVisitor):
             print(f"selected_name_2: {selected_name_2}")
 
         if ctx.constraint():
-            constraint = ctx.constraint().getText()
+            constraint, length = self.visit(ctx.constraint())
             print(f"constraint: {constraint}")
+
+        selected_name : str = ctx.selected_name(0).getText()
+        selected_name_js : str = self.convert_subtype_to_js(selected_name, length)
 
         if ctx.tolerance_aspect():
             tolerance_aspect = ctx.tolerance_aspect().getText()
@@ -2067,7 +2071,40 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         return selected_name, selected_name_js
 
-    def visitWaveform(self, ctx:vhdlParser.WaveformContext) -> Tuple[str, str]:
+    def visitConstraint(self, ctx:vhdlParser.ConstraintContext) -> Tuple[str, int]:
+        '''
+        constraint
+            : range_constraint
+            | index_constraint
+            ;
+        '''
+
+        if ctx.range_constraint():
+            return self.visitChildren(ctx)
+
+        if ctx.index_constraint():
+            return self.visit(ctx.index_constraint())
+        #return self.visitChildren(ctx)
+
+    def visitIndex_constraint(self, ctx:vhdlParser.Index_constraintContext):
+        '''
+        index_constraint
+            : LPAREN discrete_range (COMMA discrete_range)* RPAREN
+            ;
+        '''
+        return self.visit(ctx.discrete_range(0))
+
+    def visitDiscrete_range(self, ctx:vhdlParser.Discrete_rangeContext):
+        '''
+        discrete_range
+            : range_decl
+            | subtype_indication
+            ;
+        '''
+
+        return self.visit(ctx.range_decl())
+
+    def visitWaveform(self, ctx:vhdlParser.WaveformContext, target: str = None) -> Tuple[str, str]:
         '''
         waveform
             : waveform_element (COMMA waveform_element)*
@@ -2083,13 +2120,13 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         if ctx.waveform_element():
 
-            temp, temp_with_agents = self.visit(ctx.waveform_element(0))
+            temp, temp_with_agents = self.visitWaveform_element(ctx.waveform_element(0), target)
 
             waveform = temp
             waveform_with_agents = temp_with_agents
 
             for index in range(len(ctx.COMMA())):
-                temp = self.visit(ctx.waveform_element(index+1))
+                temp = self.visitWaveform_element(ctx.waveform_element(index+1), target)
 
                 waveform += f"{ctx.COMMA(index).getText()} {temp}"
                 waveform_with_agents = f"{ctx.COMMA(index).getText()} {self.find_agent(temp)}.{temp}"
@@ -2099,7 +2136,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         if ctx.UNAFFECTED():
             return ctx.UNAFFECTED().getText(), ctx.UNAFFECTED().getText()
 
-    def visitWaveform_element(self, ctx:vhdlParser.Waveform_elementContext) -> Tuple[str, str]:
+    def visitWaveform_element(self, ctx:vhdlParser.Waveform_elementContext, target: str = None) -> Tuple[str, str]:
         '''
         waveform_element
             : expression (AFTER expression)?
@@ -2121,6 +2158,20 @@ class CustomVhdlVisitor(vhdlVisitor):
             waveform_element += f" {ctx.AFTER().getText()} {temp}"
             waveform_element_with_agents += f" {ctx.AFTER().getText()} {temp_with_agents}"
             
+        # For VHDL build-in functions
+        for function in VHDLFunctions:
+            if function.value in waveform_element and function not in self.vhdlData.build_in_functions:
+                self.vhdlData.build_in_functions.append(function)
+
+                if function is VHDLFunctions.conv_std_logic_vector:
+                    waveform_element_with_agents = self.vhdl_buildin_function_str_modifier(waveform_element_with_agents, VHDLFunctions.conv_std_logic_vector)
+
+        if "others ==" in waveform_element_with_agents:
+            #length = self.find_vector_length(target)
+            temp = waveform_element_with_agents.replace("others == ", "")
+            waveform_element_with_agents = f"{temp}"*8
+            waveform_element_with_agents = f"'{waveform_element_with_agents}'"
+
         return waveform_element, waveform_element_with_agents
 
     def visitCondition(self, ctx:vhdlParser.ConditionContext) -> Tuple[str, str]:
@@ -2533,7 +2584,7 @@ class CustomVhdlVisitor(vhdlVisitor):
         if ctx.OTHERS():
             return ctx.OTHERS().getText(), ctx.OTHERS().getText()
 
-    def visitExplicit_range(self, ctx:vhdlParser.Explicit_rangeContext):
+    def visitExplicit_range(self, ctx:vhdlParser.Explicit_rangeContext) -> Tuple[str, int]:
         '''
         explicit_range
             : simple_expression (direction simple_expression)?
@@ -2543,9 +2594,21 @@ class CustomVhdlVisitor(vhdlVisitor):
         #simple_expression               : str = None
         #simple_expression_with_agents   : str = None
         
-        #explicit_range      : str = None
-        #explicit_range_js   : str = None
-        
+        simple_expression_1     : str = "" 
+        simple_expression_js_1  : str = ""
+        simple_expression_2     : str = "" 
+        simple_expression_js_2  : str = ""
+
+        simple_expression_1, simple_expression_js_1 = self.visitSimple_expression(ctx.simple_expression(0))
+
+        if ctx.direction():
+            simple_expression_2, simple_expression_js_2 = self.visitSimple_expression(ctx.simple_expression(1))
+            try:
+                return f"{simple_expression_js_1} {ctx.direction().getText()} {simple_expression_js_2}", abs(int(simple_expression_js_1) - int(simple_expression_js_2))+1
+            except (TypeError, ValueError):
+                return f"{simple_expression_js_1} {ctx.direction().getText()} {simple_expression_js_2}", 0
+        else:
+            return simple_expression_js_1, int(simple_expression_js_1)
         #simple_expression, simple_expression_with_agents = self.visit(ctx.simple_expression(0))
         
         #try:
@@ -2743,13 +2806,45 @@ class CustomVhdlVisitor(vhdlVisitor):
 
         return None
 
-    def convert_subtype_to_js(self, subtype: str) -> str:
+    def convert_subtype_to_js(self, subtype: str, vector_length: int = None) -> str:
         key : str = subtype.lower()
 
         if key in const.vhdl_types:
-            return const.vhdl_types[key]
+            temp = const.vhdl_types[key]
+
+            if temp == "Bits": return f"{temp}({8})"
+            return temp
         else:
             return subtype
 
+    def vhdl_buildin_function_str_modifier(self, function_str: str, f_type: VHDLFunctions) -> str:
+        if f_type is VHDLFunctions.conv_std_logic_vector:
+            pattern : str = r"conv_std_logic_vector\((\w+),\s*(\w+)'length\)"
+            match = re.search(pattern, function_str)
+
+        if match:
+            first_variable = match.group(1)
+            second_variable = match.group(2)
+            
+            first_variable_modified = f"{self.find_agent(first_variable)}.{first_variable}"
+            second_variable_modified = f"{self.find_agent(second_variable)}.{second_variable}"
+            
+            modified_string = re.sub(
+                pattern,
+                f"conv_std_logic_vector({first_variable_modified}, length({second_variable_modified}))",
+                function_str
+            )
+
+            return modified_string
+
+    #def find_vector_length(self, target: str) -> int:
+    #    for declaration in self.vhdlData.declarations:
+    #        if declaration.name == target:
+    #            match = re.search(r'Bytes\((\d+)\)', declaration.subtype_indication_js)
+    #            if match:
+    #                return int(match.group(1))
+    #            else:
+    #                return None
+
     def _initialize_vhdl_data(self) -> VHDLData:
-        return VHDLData([], {}, [], [])
+        return VHDLData([], {}, [], [], [])

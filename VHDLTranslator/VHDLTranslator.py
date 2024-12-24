@@ -29,7 +29,12 @@ class UTF8FileStream(FileStream):
 #Get path of .vhd file from command line
 def get_filepath(output_log: logging.Logger) -> str:
     try:
-        filepath = sys.argv[1]
+        #D:\Work\Coding\VHDLTranslatorData\VHDL_Examples\hcms2905_driver_fsm.vhd
+        #D:\Work\Coding\VHDLTranslatorData\To_Test\CaseIfExample.vhd
+        #D:\Work\Coding\VHDLTranslatorData\To_Test\ConcurrentAssignmentExample.vhd
+        #D:\Work\Coding\VHDLTranslatorData\To_Test\TypeUsageExample.vhd
+        filepath = "D:\Work\Coding\VHDLTranslatorData\To_Test\CaseIfExample.vhd"
+        #filepath = sys.argv[1]
         output_log.info(f"Reading file {filepath}")
 
         if os.path.exists(filepath):

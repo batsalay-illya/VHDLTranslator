@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from typing import List, Dict
+from enum import Enum
 
 from VHDL.VHDLStatements import *
 from VHDL.VHDLDeclaration import *
@@ -24,6 +25,10 @@ class DiscreteRange():
 @dataclass
 class IndexConstraint():
     pass
+
+class VHDLFunctions(Enum):
+    length = "'length"
+    conv_std_logic_vector = "conv_std_logic_vector"
  
 #endregion
 
@@ -45,6 +50,7 @@ class VHDLData:
     agent_types     : Dict[(str, str), List[VHDLDeclaration]]
     agents          : List[VHDLStatement]
     declarations    : List[VHDLDeclaration]
+    build_in_functions : List[VHDLFunctions]
 
     def has_type_declaration(self):
         return any(isinstance(declaration, TypeDeclaration) for declaration in self.declarations)

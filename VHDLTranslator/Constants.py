@@ -5,7 +5,7 @@ vhdl_types = {
     "bit" : "bool",
     "bit_vector" : "(int)->bool",
     "std_logic" : "bool",
-    "std_logic_vector" : "(int)->bool",
+    "std_logic_vector" : "Bits",
 
     "integer" : "int",
     "natural" : "int",

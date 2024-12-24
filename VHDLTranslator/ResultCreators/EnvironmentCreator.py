@@ -4,7 +4,7 @@ from typing import List
 
 from Debug import Debug
 from ResultCreators.ResultFile import ResultFile
-from VHDL.VHDLData import VHDLData
+from VHDL.VHDLData import VHDLData, VHDLFunctions
 from VHDL.VHDLDeclaration import *
 
 class EnvironmentCreator(ResultFile): 
@@ -44,27 +44,30 @@ class EnvironmentCreator(ResultFile):
 
         for _type in types:
             if isinstance(_type, EnumerationType):
-                result += f"\t\t{_type.name}TYPE:obj(\n\t\t\t"
-                result +=  ",\n\t\t\t".join(enumeration_literal for enumeration_literal in _type.enumeration_literals)
-                result += "\n\t\t)"
+                result += f"\t\t{_type.name}:("
+                result +=  ",".join(enumeration_literal for enumeration_literal in _type.enumeration_literals)
+                result += ")"
 
         result = self.__put_content_inside_brackets(result)
 
         return result
 
     def __get_attributes(self, vhdlData: VHDLData) -> str:
-        return "Nil"
-
-        if not vhdlData.declarations:
+        if not vhdlData.build_in_functions and not [declaration for declaration in vhdlData.declarations if isinstance(declaration, Generic)]:
             return "Nil"
 
-        type_declarations : List[TypeDeclaration] = [type_declaration for type_declaration in vhdlData.declaration_list if isinstance(type_declaration, TypeDeclaration)]
+        result : str = ""
 
-        if not type_declarations:
-            return "Nil"
+        for func in vhdlData.build_in_functions:
+            if func is VHDLFunctions.conv_std_logic_vector:
+                result += f"conv_std_logic_vector:(int,int) -> Bits(8)"
+                
+            if func is VHDLFunctions.length:
+                result += f"length:(Bits(8)) -> int"
 
-        temp : List[str] = [f"{declaration.name}:{declaration.name}TYPE" for declaration in type_declarations]
-        result : str = ',\n'.join(temp)
+            result += ",\n"
+
+        result += ',\n'.join(f"{declaration.name}:{declaration.subtype_indication_js}" for declaration in vhdlData.declarations if isinstance(declaration, Generic))
 
         result = self.__add_indentation(result, 2)
         result = self.__put_content_inside_brackets(result)
@@ -77,7 +80,6 @@ class EnvironmentCreator(ResultFile):
 
         x : int = 0
         x_max : int = len(vhdlData.agent_types.keys())-1
-        print(f"DEBUG:{x}|{x_max}")
         result : str = ""
 
         result += "\n"
@@ -88,7 +90,7 @@ class EnvironmentCreator(ResultFile):
             else:
                 result += f"\t\t{statement_name}:obj(\n"
                 result += ",\n".join(
-                    f"\t\t\t{declaration.name}:{declaration.subtype_indication_js}" 
+                    f"\t\t\t{declaration.name}:({declaration.subtype_indication_js})" 
                     for declaration in declarations
                     if not isinstance(declaration, TypeDeclaration)
                 )
@@ -120,26 +122,27 @@ class EnvironmentCreator(ResultFile):
     
     def __get_axioms(self, vhdlData: VHDLData) -> str:
         return "Nil"
-
-        if not vhdlData.entity.generic:
-            return "Nil"
-
-        result : str = ",\n".join(f"{generic.name}:{generic.subtype_indication_js}" for generic in vhdlData.entity.generic)
-
-        result = self.__add_indentation(result, 2)
-        result = self.__put_content_inside_brackets(result)
-
-        return result
     
     def __get_logic_formula(self, vhdlData: VHDLData) -> str:
-        return "Nil"
+        result : str = ""
 
-        if not vhdlData.declarations:
+        result += " &&\n".join(
+            f"\t\t{declaration.agent_name}.{declaration.name} == {declaration.expression_with_agents}"
+            for declaration in vhdlData.declarations
+            if isinstance(declaration, (Port, SignalDeclaration, VariableDeclaration)) and declaration.expression_with_agents is not None
+        )
+
+        if len([declaration for declaration in vhdlData.declarations if isinstance(declaration, Generic)]):
+            result += " &&\n"
+
+        result += " &&\n".join(
+            f"\t\t{declaration.name} == {declaration.expression_with_agents}"
+            for declaration in vhdlData.declarations
+            if isinstance(declaration, Generic)
+        )
+
+        if not result:
             return "Nil"
-
-        declarations_with_axiom = [declaration for declaration in vhdlData.declaration_list if hasattr(declaration, 'expression') and not isinstance(declaration, Generic)]
-
-        result : str = " &&\n".join(f"\t\t{declaration.name} == {declaration.expression}" for declaration in declarations_with_axiom if declaration.expression is not None)
 
         result = self.__put_content_inside_brackets(result)
 
